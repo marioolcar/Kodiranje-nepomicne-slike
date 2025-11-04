@@ -210,6 +210,22 @@
 			<div id="loadingBar"></div>
 		</div>
 		<div id="loadingText"></div>
+		<div
+			id="errorBox"
+			style="
+				display: none;
+				margin-top: 1rem;
+				background: #ffeaea;
+				color: #b20000;
+				padding: 1rem;
+				border-radius: 8px;
+				border: 1px solid #ffb3b3;
+				font-weight: 600;
+				text-align: center;
+			"
+		>
+			⚠️ Dogodila se greška prilikom učitavanja ili obrade podataka.
+		</div>
 
 		<div id="originalContainer" class="original-image" style="display: none">
 			<h3>Originalna slika</h3>
@@ -526,6 +542,38 @@
 						},
 					},
 				});
+			}
+
+			// ---------- GLOBAL ERROR HANDLER ----------
+			window.addEventListener("error", function (event) {
+				const errorBox = document.getElementById("errorBox");
+				errorBox.style.display = "block";
+				errorBox.textContent = "⚠️ Greška: " + event.message;
+				console.error(
+					"Greška:",
+					event.message,
+					event.filename,
+					":",
+					event.lineno
+				);
+			});
+
+			// ---------- CATCH FOR CHART OR IMAGE ERRORS ----------
+			try {
+				if (typeof Chart === "undefined") {
+					throw new Error("Chart.js nije učitan!");
+				}
+			} catch (e) {
+				const errorBox = document.getElementById("errorBox");
+				errorBox.style.display = "block";
+				errorBox.textContent = "⚠️ " + e.message;
+				console.error(e);
+			}
+
+			function showError(msg) {
+				const errorBox = document.getElementById("errorBox");
+				errorBox.style.display = "block";
+				errorBox.textContent = "⚠️ " + msg;
 			}
 		</script>
 	</body>
