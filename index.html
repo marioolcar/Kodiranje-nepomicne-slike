@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="hr">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>DCT Kvantizacija slike – usporedba s loading barom</title>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<style>
+			body {
+				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+				margin: 1.5rem;
+				background: #f5f7fa;
+				color: #333;
+				line-height: 1.6;
+			}
+			h1 {
+				color: #2c3e50;
+				margin-bottom: 0.5rem;
+				text-align: center;
+			}
+			.subtitle {
+				text-align: center;
+				color: #7f8c8d;
+				margin-bottom: 1.5rem;
+			}
+			.controls {
+				background: white;
+				border-radius: 10px;
+				box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+				padding: 1.5rem;
+				margin-bottom: 1.5rem;
+				display: flex;
+				flex-wrap: wrap;
+				gap: 1.5rem;
+				align-items: flex-end;
+			}
+			.control-group {
+				display: flex;
+				flex-direction: column;
+				gap: 0.5rem;
+			}
+			label {
+				font-weight: 600;
+				color: #2c3e50;
+				font-size: 0.9rem;
+			}
+			select,
+			button {
+				padding: 0.6rem 1rem;
+				border: 1px solid #ddd;
+				border-radius: 6px;
+				font-size: 0.9rem;
+				background: white;
+			}
+			button {
+				background: #3498db;
+				color: white;
+				border: none;
+				cursor: pointer;
+				transition: background 0.2s;
+				font-weight: 600;
+			}
+			button:hover {
+				background: #2980b9;
+			}
+			button:disabled {
+				background: #bdc3c7;
+				cursor: not-allowed;
+			}
+			.row {
+				display: flex;
+				flex-wrap: wrap;
+				justify-content: center;
+				gap: 1rem;
+				margin-top: 1rem;
+			}
+			.card {
+				background: white;
+				border-radius: 10px;
+				box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+				padding: 1rem;
+				width: 22%;
+				min-width: 260px;
+				transition: transform 0.2s, box-shadow 0.2s;
+			}
+			.card:hover {
+				transform: translateY(-5px);
+				box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+			}
+			.card h3 {
+				margin-top: 0;
+				color: #2c3e50;
+				text-align: center;
+				border-bottom: 1px solid #eee;
+				padding-bottom: 0.5rem;
+			}
+			canvas {
+				width: 100%;
+				border-radius: 6px;
+				margin-bottom: 0.5rem;
+				border: 1px solid #eee;
+			}
+			.info {
+				font-size: 0.8rem;
+				color: #555;
+				text-align: center;
+				margin: 0.5rem 0 0;
+			}
+			#chartContainer {
+				background: white;
+				margin-top: 2rem;
+				padding: 1.5rem;
+				border-radius: 10px;
+				box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+			}
+			/* Loading bar */
+			#loadingContainer {
+				width: 100%;
+				background: #ecf0f1;
+				border-radius: 8px;
+				overflow: hidden;
+				margin-top: 1rem;
+				display: none;
+				box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+			}
+			#loadingBar {
+				height: 14px;
+				background: linear-gradient(90deg, #2ecc71, #1abc9c);
+				width: 0%;
+				transition: width 0.3s ease;
+				border-radius: 8px;
+			}
+			#loadingText {
+				text-align: center;
+				font-size: 0.9rem;
+				color: #444;
+				margin-top: 0.5rem;
+			}
+			.original-image {
+				text-align: center;
+				margin-bottom: 1rem;
+			}
+			.original-image h3 {
+				color: #2c3e50;
+				margin-bottom: 0.5rem;
+			}
+			.original-image canvas {
+				max-width: 300px;
+				border: 2px solid #3498db;
+			}
+			.explanation {
+				background: white;
+				border-radius: 10px;
+				box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+				padding: 1.5rem;
+				margin-top: 1.5rem;
+			}
+			.explanation h2 {
+				color: #2c3e50;
+				margin-top: 0;
+			}
+			.explanation p {
+				margin-bottom: 1rem;
+			}
+			@media (max-width: 768px) {
+				.controls {
+					flex-direction: column;
+					align-items: stretch;
+				}
+				.control-group {
+					width: 100%;
+				}
+				.card {
+					width: 100%;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<h1>DCT Kvantizacija slike</h1>
+		<p class="subtitle">
+			Učitaj sliku i usporedi kako različite kvantizacijske matrice utječu na
+			kvalitetu slike i kompresijski omjer
+		</p>
+
+		<div class="controls">
+			<div class="control-group">
+				<label for="fileInput">Odaberi sliku:</label>
+				<input
+					type="file"
+					id="fileInput"
+					accept="image/gif,image/png,image/jpeg"
+				/>
+			</div>
+			<div class="control-group">
+				<label for="maxDimSelect">Maksimalna dimenzija slike:</label>
+				<select id="maxDimSelect">
+					<option value="64">64 piksela</option>
+					<option value="128">128 piksela</option>
+					<option value="256">256 piksela</option>
+					<option value="512" selected>512 piksela</option>
+				</select>
+			</div>
+			<div class="control-group">
+				<button id="processBtn" disabled>Obradi sliku</button>
+			</div>
+		</div>
+
+		<div id="loadingContainer">
+			<div id="loadingBar"></div>
+		</div>
+		<div id="loadingText"></div>
+
+		<div id="originalContainer" class="original-image" style="display: none">
+			<h3>Originalna slika</h3>
+			<canvas id="originalCanvas"></canvas>
+		</div>
+
+		<div class="row" id="imageRow"></div>
+
+		<div id="chartContainer" style="display: none">
+			<h3>Usporedba kompresijskog omjera</h3>
+			<canvas id="compressionChart"></canvas>
+		</div>
+
+		<div class="explanation">
+			<h2>O DCT kvantizaciji</h2>
+			<p>
+				Diskretna kosinusna transformacija (DCT) je matematička tehnika koja se
+				koristi u kompresiji slika (npr. JPEG). Ona pretvara sliku iz prostorne
+				u frekvencijsku domenu, gdje se mogu ukloniti manje važni detalji bez
+				primjetnog gubitka kvalitete.
+			</p>
+			<p>
+				Kvantizacijske matrice (QM) određuju koliko će se detalja sačuvati -
+				manje vrijednosti rezultiraju boljom kvalitetom ali manjom kompresijom,
+				dok veće vrijednosti daju veću kompresiju uz gubitak kvalitete.
+			</p>
+		</div>
+
+		<script>
+			// ---------- DCT ----------
+			function dct2D(block) {
+				const N = 8;
+				const result = Array.from({ length: N }, () => Array(N).fill(0));
+				const c = (x) => (x === 0 ? 1 / Math.sqrt(2) : 1);
+				for (let u = 0; u < N; u++) {
+					for (let v = 0; v < N; v++) {
+						let sum = 0;
+						for (let x = 0; x < N; x++) {
+							for (let y = 0; y < N; y++) {
+								sum +=
+									block[x][y] *
+									Math.cos(((2 * x + 1) * u * Math.PI) / 16) *
+									Math.cos(((2 * y + 1) * v * Math.PI) / 16);
+							}
+						}
+						result[u][v] = 0.25 * c(u) * c(v) * sum;
+					}
+				}
+				return result;
+			}
+			function idct2D(block) {
+				const N = 8;
+				const result = Array.from({ length: N }, () => Array(N).fill(0));
+				const c = (x) => (x === 0 ? 1 / Math.sqrt(2) : 1);
+				for (let x = 0; x < N; x++) {
+					for (let y = 0; y < N; y++) {
+						let sum = 0;
+						for (let u = 0; u < N; u++) {
+							for (let v = 0; v < N; v++) {
+								sum +=
+									c(u) *
+									c(v) *
+									block[u][v] *
+									Math.cos(((2 * x + 1) * u * Math.PI) / 16) *
+									Math.cos(((2 * y + 1) * v * Math.PI) / 16);
+							}
+						}
+						result[x][y] = 0.25 * sum;
+					}
+				}
+				return result;
+			}
+
+			// ---------- QM MATRICE ----------
+			const baseQM = [
+				[16, 11, 10, 16, 24, 40, 51, 61],
+				[12, 12, 14, 19, 26, 58, 60, 55],
+				[14, 13, 16, 24, 40, 57, 69, 56],
+				[14, 17, 22, 29, 51, 87, 80, 62],
+				[18, 22, 37, 56, 68, 109, 103, 77],
+				[24, 35, 55, 64, 81, 104, 113, 92],
+				[49, 64, 78, 87, 103, 121, 120, 101],
+				[72, 92, 95, 98, 112, 100, 103, 99],
+			];
+			const QMlevels = [0.5, 1, 2, 4].map((scale) =>
+				baseQM.map((row) => row.map((v) => Math.round(v * scale)))
+			);
+
+			// Global variables
+			let currentImage = null;
+			let currentMaxDim = 512;
+
+			// DOM elements
+			const fileInput = document.getElementById("fileInput");
+			const maxDimSelect = document.getElementById("maxDimSelect");
+			const processBtn = document.getElementById("processBtn");
+			const originalContainer = document.getElementById("originalContainer");
+			const originalCanvas = document.getElementById("originalCanvas");
+			const imageRow = document.getElementById("imageRow");
+			const chartContainer = document.getElementById("chartContainer");
+			const loadCont = document.getElementById("loadingContainer");
+			const loadBar = document.getElementById("loadingBar");
+			const loadText = document.getElementById("loadingText");
+
+			// Event listeners
+			fileInput.addEventListener("change", (e) => {
+				const file = e.target.files[0];
+				if (!file) return;
+
+				const img = new Image();
+				img.onload = () => {
+					currentImage = img;
+					processBtn.disabled = false;
+					displayOriginalImage(img);
+				};
+				img.src = URL.createObjectURL(file);
+			});
+
+			maxDimSelect.addEventListener("change", (e) => {
+				currentMaxDim = parseInt(e.target.value);
+				if (currentImage) {
+					displayOriginalImage(currentImage);
+				}
+			});
+
+			processBtn.addEventListener("click", () => {
+				if (currentImage) {
+					processImage(currentImage);
+				}
+			});
+
+			function displayOriginalImage(img) {
+				const maxDim = currentMaxDim;
+				let scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+				const newW = Math.round(img.width * scale);
+				const newH = Math.round(img.height * scale);
+
+				const ctx = originalCanvas.getContext("2d");
+				originalCanvas.width = newW;
+				originalCanvas.height = newH;
+				ctx.drawImage(img, 0, 0, newW, newH);
+
+				originalContainer.style.display = "block";
+			}
+
+			function processImage(img) {
+				const maxDim = currentMaxDim;
+				let scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+				const newW = Math.round(img.width * scale);
+				const newH = Math.round(img.height * scale);
+
+				const tempCanvas = document.createElement("canvas");
+				const ctx = tempCanvas.getContext("2d");
+				tempCanvas.width = newW;
+				tempCanvas.height = newH;
+				ctx.drawImage(img, 0, 0, newW, newH);
+				const imageData = ctx.getImageData(0, 0, newW, newH);
+
+				const gray = [];
+				for (let y = 0; y < newH; y++) {
+					gray[y] = [];
+					for (let x = 0; x < newW; x++) {
+						const i = (y * newW + x) * 4;
+						gray[y][x] =
+							0.299 * imageData.data[i] +
+							0.587 * imageData.data[i + 1] +
+							0.114 * imageData.data[i + 2];
+					}
+				}
+
+				imageRow.innerHTML = "";
+				const compressionValues = [];
+
+				// --- Loading bar setup ---
+				loadCont.style.display = "block";
+				loadBar.style.width = "0%";
+				loadText.innerText = "Obrada slike...";
+
+				const totalSteps = QMlevels.length;
+				let step = 0;
+
+				(async function processLevels() {
+					for (const [idx, QM] of QMlevels.entries()) {
+						await new Promise((r) => setTimeout(r, 30)); // small delay
+						const canvasOut = document.createElement("canvas");
+						canvasOut.width = newW;
+						canvasOut.height = newH;
+						const ctxOut = canvasOut.getContext("2d");
+						const imgOut = ctxOut.createImageData(newW, newH);
+
+						const N = 8;
+						let nonZeroBefore = 0,
+							nonZeroAfter = 0;
+
+						for (let by = 0; by < newH; by += N) {
+							for (let bx = 0; bx < newW; bx += N) {
+								const block = Array.from({ length: N }, (_, i) =>
+									Array.from({ length: N }, (_, j) =>
+										gray[by + i] && gray[by + i][bx + j] !== undefined
+											? gray[by + i][bx + j] - 128
+											: 0
+									)
+								);
+								const dctBlock = dct2D(block);
+								const quantized = dctBlock.map((r, i) =>
+									r.map((v, j) => Math.round(v / QM[i][j]))
+								);
+								const dequantized = quantized.map((r, i) =>
+									r.map((v, j) => v * QM[i][j])
+								);
+								const reconBlock = idct2D(dequantized);
+
+								dctBlock.flat().forEach((v) => {
+									if (Math.abs(v) > 1) nonZeroBefore++;
+								});
+								quantized.flat().forEach((v) => {
+									if (v !== 0) nonZeroAfter++;
+								});
+
+								for (let i = 0; i < N; i++) {
+									for (let j = 0; j < N; j++) {
+										const val = Math.min(
+											255,
+											Math.max(0, reconBlock[i][j] + 128)
+										);
+										const pos = ((by + i) * newW + (bx + j)) * 4;
+										imgOut.data[pos] =
+											imgOut.data[pos + 1] =
+											imgOut.data[pos + 2] =
+												val;
+										imgOut.data[pos + 3] = 255;
+									}
+								}
+							}
+						}
+
+						const compression = (1 - nonZeroAfter / nonZeroBefore) * 100;
+						compressionValues.push(compression);
+						ctxOut.putImageData(imgOut, 0, 0);
+
+						const card = document.createElement("div");
+						card.className = "card";
+						card.innerHTML = `
+                        <h3>QM${idx + 1}</h3>
+                        <canvas></canvas>
+                        <p class="info">Kompresijski omjer: ${compression.toFixed(
+													1
+												)}%</p>
+                    `;
+						card.querySelector("canvas").replaceWith(canvasOut);
+						imageRow.appendChild(card);
+
+						step++;
+						const progress = Math.round((step / totalSteps) * 100);
+						loadBar.style.width = progress + "%";
+						loadText.innerText = `Obrada: ${progress}%`;
+					}
+
+					loadCont.style.display = "none";
+					loadText.innerText = "";
+					drawChart(compressionValues);
+					chartContainer.style.display = "block";
+				})();
+			}
+
+			function drawChart(values) {
+				const ctx = document
+					.getElementById("compressionChart")
+					.getContext("2d");
+				if (window.compChart) window.compChart.destroy();
+				window.compChart = new Chart(ctx, {
+					type: "bar",
+					data: {
+						labels: ["QM1", "QM2", "QM3", "QM4"],
+						datasets: [
+							{
+								label: "Kompresijski omjer (%)",
+								data: values,
+								backgroundColor: [
+									"rgba(52, 152, 219, 0.7)",
+									"rgba(46, 204, 113, 0.7)",
+									"rgba(155, 89, 182, 0.7)",
+									"rgba(241, 196, 15, 0.7)",
+								],
+								borderColor: [
+									"rgb(52, 152, 219)",
+									"rgb(46, 204, 113)",
+									"rgb(155, 89, 182)",
+									"rgb(241, 196, 15)",
+								],
+								borderWidth: 1,
+							},
+						],
+					},
+					options: {
+						responsive: true,
+						scales: {
+							y: {
+								beginAtZero: true,
+								title: { display: true, text: "Postotak kompresije (%)" },
+							},
+						},
+						plugins: {
+							legend: {
+								display: false,
+							},
+							tooltip: {
+								callbacks: {
+									label: function (context) {
+										return `Kompresija: ${context.raw.toFixed(1)}%`;
+									},
+								},
+							},
+						},
+					},
+				});
+			}
+		</script>
+	</body>
+</html>
