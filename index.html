@@ -162,6 +162,17 @@
 			.explanation p {
 				margin-bottom: 1rem;
 			}
+
+			.qm-table {
+				border-collapse: collapse;
+				margin: 1em auto;
+				text-align: center;
+				font-size: 0.9em;
+			}
+			.qm-table td {
+				border: 1px solid #ccc;
+				padding: 4px 6px;
+			}
 			@media (max-width: 768px) {
 				.controls {
 					flex-direction: column;
@@ -193,7 +204,7 @@
 				/>
 			</div>
 			<div class="control-group">
-				<label for="maxDimSelect">Maksimalna dimenzija slike:</label>
+				<label for="maxDimSelect">Skaliranje ulazne slike:</label>
 				<select id="maxDimSelect">
 					<option value="64">64 piksela</option>
 					<option value="128">128 piksela</option>
@@ -240,17 +251,154 @@
 		</div>
 
 		<div class="explanation">
-			<h2>O DCT kvantizaciji</h2>
+			<h2>O DCT kvantizaciji i kodiranju slike</h2>
 			<p>
-				Diskretna kosinusna transformacija (DCT) je matematička tehnika koja se
-				koristi u kompresiji slika (npr. JPEG). Ona pretvara sliku iz prostorne
-				u frekvencijsku domenu, gdje se mogu ukloniti manje važni detalji bez
-				primjetnog gubitka kvalitete.
+				Diskretna kosinusna transformacija (DCT) je temeljni matematički
+				postupak koji se koristi u standardima kompresije slike poput
+				<strong>JPEG-a</strong>. Njezina je glavna zadaća pretvoriti sliku iz
+				<em>prostorne domene</em> (vrijednosti piksela) u
+				<em>frekvencijsku domenu</em>. Na taj se način informacije o slici
+				raspoređuju tako da su najvažnije komponente (npr. prosječna svjetlina i
+				grubi oblici) sažete u nekoliko niskofrekvencijskih koeficijenata, dok
+				su visoke frekvencije (sitni detalji i šum) jasno odvojene.
 			</p>
+
 			<p>
-				Kvantizacijske matrice (QM) određuju koliko će se detalja sačuvati -
-				manje vrijednosti rezultiraju boljom kvalitetom ali manjom kompresijom,
-				dok veće vrijednosti daju veću kompresiju uz gubitak kvalitete.
+				Transformacija se primjenjuje nad blokovima veličine 8×8 piksela. Svaki
+				blok nakon DCT-a daje matricu od 64 koeficijenta, gdje je gornji lijevi
+				element (<strong>"DC komponenta"</strong>) prosječna svjetlina bloka, a
+				ostali elementi (<strong>"AC komponente"</strong>) opisuju promjene
+				svjetline i detalje. Ovaj korak sam po sebi ne smanjuje količinu
+				podataka, ali priprema ih za <strong>kvantizaciju</strong>, koja je
+				ključni dio kompresije s gubitkom.
+			</p>
+
+			<h3>Kvantizacija i kvantizacijske matrice</h3>
+			<p>
+				Kvantizacija je proces u kojem se DCT koeficijenti dijele s unaprijed
+				definiranom <strong>kvantizacijskom matricom (QM)</strong> i zatim
+				zaokružuju. Time se visoke frekvencije, koje manje doprinose vizualnoj
+				percepciji slike, često svode na nulu, dok se niže frekvencije čuvaju
+				preciznije. Ovim postupkom značajno se smanjuje broj bitova potrebnih za
+				pohranu slike.
+			</p>
+
+			<p>
+				Kvantizacijska matrica određuje koliko se jaka kvantizacija primjenjuje
+				na pojedine frekvencijske komponente. U JPEG standardu koristi se
+				osnovna matrica za luminancu (Y kanal):
+			</p>
+
+			<table class="qm-table">
+				<tr>
+					<td>16</td>
+					<td>11</td>
+					<td>10</td>
+					<td>16</td>
+					<td>24</td>
+					<td>40</td>
+					<td>51</td>
+					<td>61</td>
+				</tr>
+				<tr>
+					<td>12</td>
+					<td>12</td>
+					<td>14</td>
+					<td>19</td>
+					<td>26</td>
+					<td>58</td>
+					<td>60</td>
+					<td>55</td>
+				</tr>
+				<tr>
+					<td>14</td>
+					<td>13</td>
+					<td>16</td>
+					<td>24</td>
+					<td>40</td>
+					<td>57</td>
+					<td>69</td>
+					<td>56</td>
+				</tr>
+				<tr>
+					<td>14</td>
+					<td>17</td>
+					<td>22</td>
+					<td>29</td>
+					<td>51</td>
+					<td>87</td>
+					<td>80</td>
+					<td>62</td>
+				</tr>
+				<tr>
+					<td>18</td>
+					<td>22</td>
+					<td>37</td>
+					<td>56</td>
+					<td>68</td>
+					<td>109</td>
+					<td>103</td>
+					<td>77</td>
+				</tr>
+				<tr>
+					<td>24</td>
+					<td>35</td>
+					<td>55</td>
+					<td>64</td>
+					<td>81</td>
+					<td>104</td>
+					<td>113</td>
+					<td>92</td>
+				</tr>
+				<tr>
+					<td>49</td>
+					<td>64</td>
+					<td>78</td>
+					<td>87</td>
+					<td>103</td>
+					<td>121</td>
+					<td>120</td>
+					<td>101</td>
+				</tr>
+				<tr>
+					<td>72</td>
+					<td>92</td>
+					<td>95</td>
+					<td>98</td>
+					<td>112</td>
+					<td>100</td>
+					<td>103</td>
+					<td>99</td>
+				</tr>
+			</table>
+
+			<p>
+				Vrijednosti u gornjem lijevom kutu su najmanje – te komponente se čuvaju
+				precizno (niskofrekvencijski podaci). Vrijednosti prema desnom i donjem
+				rubu rastu, što znači da se visokofrekvencijski detalji grublje
+				kvantiziraju (više gube). Tako ljudsko oko zadržava dojam kvalitete
+				slike, iako se tehnički gubi mnogo informacija.
+			</p>
+
+			<h3>Utjecaj razine kvantizacije</h3>
+			<p>
+				Skaliranjem ove osnovne matrice moguće je simulirati različite razine
+				kompresije. Na primjer:
+			</p>
+			<ul>
+				<li><strong>QM × 1</strong> → visoka kvaliteta, niska kompresija</li>
+				<li><strong>QM × 4</strong> → umjerena kvaliteta, znatna kompresija</li>
+				<li>
+					<strong>QM × 6</strong> → velika kompresija, izražen gubitak detalja
+				</li>
+			</ul>
+
+			<p>
+				Ovaj program uspoređuje slike rekonstruirane s različitim
+				kvantizacijskim matricama te prikazuje
+				<strong>kompresijski omjer</strong> – postotak koeficijenata koji su
+				postali nula nakon kvantizacije. Na taj način vizualno se može vidjeti
+				kompromis između <em>kvalitete slike</em> i <em>stupnja kompresije</em>.
 			</p>
 		</div>
 
@@ -310,7 +458,7 @@
 				[49, 64, 78, 87, 103, 121, 120, 101],
 				[72, 92, 95, 98, 112, 100, 103, 99],
 			];
-			const QMlevels = [1, 2, 4, 5, 6].map((scale) =>
+			const QMlevels = [1, 2, 3, 4, 5, 6].map((scale) =>
 				baseQM.map((row) => row.map((v) => Math.round(v * scale)))
 			);
 
@@ -499,7 +647,7 @@
 				window.compChart = new Chart(ctx, {
 					type: "bar",
 					data: {
-						labels: ["QM1", "QM2", "QM3", "QM4", "QM5"],
+						labels: ["QM1", "QM2", "QM3", "QM4", "QM5", "Q6"],
 						datasets: [
 							{
 								label: "Kompresijski omjer (%)",
@@ -510,6 +658,7 @@
 									"rgba(155, 89, 182, 0.7)",
 									"rgba(241, 196, 15, 0.7)",
 									"rgba(180, 196, 15, 0.7)",
+									"rgba(120, 196, 15, 0.7)",
 								],
 								borderColor: [
 									"rgb(52, 152, 219)",
